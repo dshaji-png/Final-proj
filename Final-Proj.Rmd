@@ -2,7 +2,7 @@
 title: "Final-Proj"
 author: "Deo Shaji"
 date: "2025-04-26"
-output: html_document
+output: github_document
 ---
 
 # Analysis of Diabetes Health Indicators
