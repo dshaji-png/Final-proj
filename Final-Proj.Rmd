@@ -401,7 +401,8 @@ The original model has an accuracy score of 0.8340705 and the interaction model 
 
 ```{r}
 library(randomForest)
-
+library(class)
+library(caret)
 
 set.seed(123)  # for reproducibility
 k <- 5
@@ -438,9 +439,7 @@ A Random Forest is a model in which multiple decision trees are trained on subse
 #### KNN
 
 ```{r}
-# Load libraries
-library(class)
-library(caret)
+
 
 # Split the data into training and test sets
 set.seed(42)
