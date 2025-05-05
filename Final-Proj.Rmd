@@ -1,0 +1,476 @@
+---
+title: "Final-Proj"
+author: "Deo Shaji"
+date: "2025-04-26"
+output: html_document
+---
+
+# Analysis of Diabetes Health Indicators
+
+Deo Shaji
+
+## Introduction
+
+The goal of this project is to explore the Diabetes Health Indicators Dataset to find out which variables or combination of variable are great at modeling the chances a person has diabetes. As the number of people with diabetes is growing significantly, it is important to understand what variables are great indicators of diabetes.This understanding of what indicators relate to diabetes can help with the learning what causes diabetes or how to prevent diabetes in the future.
+
+We will look at the following questions:
+
+1.  Which variables are highly correlated to having diabetes?
+2.  Can smoking status or alcohol consumption predict diabetes?
+3.  Does diet affect chances of diabetes?
+4.  Does Mental health, Physical Health, education, and income affect chances of diabetes?
+5.  Can we predict a model that can accurately predict diabetes?
+
+## Data
+
+### Structure
+
+The link to the dataset is <https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset>. This is a dataset from Kaggle containing data collected by survey from 400,000 Americans. This data was collected by the CDC as part of their Behavioral Risk Factor Surveillance System(BRFSS). The dataset provided by kaggle is a cleaned up version of the original survey for the year 2015. There are three csv files provided but we will only be looking at the first csv file that contains 253,680 survey responses with a binary categorization of 0 for no diabetes and 1 for pre diabetes or diabetes. The other files will not be used in this analysis.
+
+### Cleaning
+
+This data set contains 253,680 responses with 22 variables in total. We will go through the data set to remove any rows that have empty values, then remove the variables deemed unnecessary.
+
+```{r}
+library(tidyverse)
+
+# load data set 
+data <- read.csv("diabetes_binary_health_indicators_BRFSS2015.csv")
+View(data)
+
+# remove any records with empty values
+data <- data %>%
+  drop_na()
+
+# check to see if any rows were deleted
+nrow(data)
+```
+
+It seems that there were no empty cells in this data set. Now we will go through all the variables and delete the ones deemed unnecessary.
+
+```{r}
+colnames(data)
+```
+
+Cholcheck, AnyHealthcare, and NoDocbcCost are the three variables I plan to remove. Cholcheck is a variable that returns 0 if the individual has not checked their cholesterol in the past five years and returns 1 if they have had a cholesterol check. Only 9,000 responded with 0 for this variable implying the insignificance of Cholcheck. The same issue occurred with the other two variables where only a small proportion of people claimed they did not have any health insurance or that they did not go see a doctor due to the costs.
+
+```{r}
+# remove unnecessary columns
+data <- data |>
+  select(-CholCheck, -AnyHealthcare, -NoDocbcCost)
+
+# check if columns were removed
+ncol(data)
+```
+
+### Variables
+
+-   Diabetes_binary: 0 for no diabetes, 1 for pre diabetic or diabetic
+
+-   HighBP: 0 = no high BP, 1 = high BP
+
+-   HighChol: 0 = no high cholesterol, 1 = high cholesterol
+
+-   BMI: Body Mass Index
+
+-   Smoker: Have you smoked at least 100 cigarettes in your entire life? [Note: 5 packs = 100 cigarettes] 0 = no 1 = yes
+
+-   Stroke: you had a stroke. 0 = no 1 = yes
+
+-   HeartDiseaseorAttack: coronary heart disease (CHD) or myocardial infarction (MI) 0 = no 1 = yes
+
+-   PhysActivity: physical activity in past 30 days - not including job 0 = no 1 = yes
+
+-   Fruits: Consume Fruit 1 or more times per day 0 = no 1 = yes
+
+-   Veggies: Consume Vegetables 1 or more times per day 0 = no 1 = yes
+
+-   HvyAlcoholConsump: Heavy drinkers (adult men having more than 14 drinks per week and adult women having more than 7 drinks per week) 0 = no 1 = yes
+
+-   GenHlth: Would you say that in general your health is: scale 1-5 1 = excellent 2 = very good 3 = good 4 = fair 5 = poor
+
+-   MentHlth: Now thinking about your mental health, which includes stress, depression, and problems with emotions, for how many days during the past 30 days was your mental health not good? scale 1-30 days
+
+-   PhysHlth: Now thinking about your physical health, which includes physical illness and injury, for how many days during the past 30 days was your physical health not good? scale 1-30 days
+
+-   DiffWalk: Do you have serious difficulty walking or climbing stairs? 0 = no 1 = yes
+
+-   Sex: 0 = female 1 = male
+
+-   Age: 13-level age category. 1 = 18-24, 2 = 25 - 29, 3 = 30 - 34, 4 = 35 - 39, 5 = 40 - 44, 6 = 45 - 49, 7 = 50 - 54, 8 = 55 - 59, 9 = 60-64, 10 = 65 - 69, 11 = 70 - 74, 12 = 75 - 79, 13 = 80 or older
+
+-   Education: Education level scale 1-6: 1 = Never attended school or only kindergarten 2 = Grades 1 through 8 (Elementary) 3 = Grades 9 through 11 (Some high school) 4 = Grade 12 or GED (High school graduate) 5 = College 1 year to 3 years (Some college or technical school) 6 = College 4 years or more (College graduate)
+
+-   Income: Income scale 1-8. 1 = less than 10,000, 2 = 10,000 - 15,000, 3 = 15,000 - 20,000, 4 = 20,000 - 25,000, 5 = 25,000 - 35,000, 6 = 35,000 - 50,000, 7 = 50,000 - 75,000, 8 = 75,000 or more
+
+Majority of these variables are categorical, but have been classified as num by R. I will update the variables to be represented as levels.
+
+```{r}
+# update variables from num to levels
+data <- data |>
+  mutate(
+    Diabetes_binary = factor(Diabetes_binary),
+    HighBP = factor(HighBP),
+    HighChol = factor(HighChol),
+    Stroke = factor(Stroke),
+    Smoker = factor(Smoker),
+    HeartDiseaseorAttack = factor(HeartDiseaseorAttack),
+    PhysActivity = factor(PhysActivity),
+    Fruits = factor(Fruits),
+    Veggies = factor(Veggies),
+    HvyAlcoholConsump = factor(HvyAlcoholConsump),
+    GenHlth = factor(GenHlth),
+    MentHlth = as.numeric(MentHlth),
+    PhysHlth = as.numeric(PhysHlth),
+    DiffWalk = factor(DiffWalk),
+    Sex = factor(Sex),
+    Education = factor(Education),
+    Income = factor(Income),
+    Age = factor(Age)
+  )
+
+# check if the variables changed
+str(data)
+```
+
+## Results
+
+### Which variables are highly correlated to having diabetes?
+
+#### Categorical Variables
+
+```{r}
+# List of categorical variables to plot
+categorical_vars <- c("HighBP", "HighChol", "Smoker", "Stroke", "HeartDiseaseorAttack", "PhysActivity", "Fruits", "Veggies", "HvyAlcoholConsump", "GenHlth", "DiffWalk", "Sex", "Age", "Education", "Income")
+
+for (var in categorical_vars) {
+  print(
+    data |>
+      ggplot(aes_string(x = var, fill = "Diabetes_binary")) + 
+      geom_bar(position = "dodge") + 
+      labs(
+        title = paste(var, "vs Diabetes"),
+        x = var,
+        y = "Count",
+        fill = "Diabetes Status"
+      ) +
+      theme_minimal()
+  )
+}
+
+```
+
+What we want to look at is which variables have a high correlation with having diabetes.
+
+Here are the list of categorical variables that correlate with having diabetes
+
+-   HighBP
+
+-   HighChol
+
+-   PhysActivity
+
+-   Fruits
+
+-   Veggies
+
+-   HvyAlcoholConsump
+
+-   GenHlth
+
+-   Age
+
+-   HeartDiseaseorAttack
+
+-   Stroke
+
+While all the variables listed above show some correlation with having diabetes, it does not imply that these variables directly affect the chances of a person having diabetes. For the variable stroke, there are significantly more people who have not had a stroke that have diabetes compared to the number of people who have had a stroke and have diabetes. This does not imply that not having a stroke increases your chances of having diabetes. The only reason this occurred is that the number of people who had strokes was very few to begin with. This is the same case with HeartDiseaseorAttack. The number of people who have not had a heart attack and have diabetes is higher than the number of people with diabetes and heart disease. This situation is the result of having very few people with heart disease in the survey to begin with. This is the same scenario with PhysActivity, Fruits, Veggies, and HvyAlcoholConsump. The variables that showed minimal or no relationship with having diabetes are Smoker, DiffWalk, Sex, Education, and Income.
+
+#### Numerical Variables
+
+```{r}
+# List of numerical variables to plot
+numerical_vars <- c("BMI", "MentHlth", "PhysHlth")
+
+for (var in numerical_vars) {
+  print(
+    data |>
+      ggplot(aes_string(x = var, fill = "Diabetes_binary")) + 
+      geom_histogram(position = "stack", bins = 30, alpha = 0.7) +  # Stacked histogram
+      labs(
+        title = paste(var, "vs Diabetes (Stacked Histogram)"),
+        x = var,
+        y = "Count",
+        fill = "Diabetes Status"
+      ) +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis text for readability
+  )
+}
+```
+
+While it might seem like people with one day of bad physical health or mental health have a higher chance of having diabetes from this histogram, it is not true. The higher number of people with diabetes is due to the large number of people who only had one bad day of mental or physical health. With BMI, it seems that people with a BMI of 25-30 have a higher chance of having diabetes compared to other BMI values, however, this is only due to majority of the population having those BMI values as well. It seems that there is a slight correlation between BMI and diabetes, but further analysis would be needed to make sure.
+
+### Can smoking status or alcohol consumption predict diabetes?
+
+#### Smoking Status
+
+```{r}
+# Fit a logistic regression model for SmokingStatus as a predictor of Diabetes
+model_smoking <- glm(Diabetes_binary ~ Smoker, data = data, family = "binomial")
+
+# Summary of the model
+summary(model_smoking)
+```
+
+Here the p-value for smoker is \<0.05 implying that the smoker variable is statistically significant. Smoker 1 has an estimate of 0.350609 which results in a positive relationship between smoking and having diabetes with a log odds of .35 or odds ratio of 1.41993202. What this means is that the chances of having diabetes as a smoker is 1.4199 times higher than a person who does not smoke.
+
+#### Heavy Alcohol Consumption
+
+```{r}
+# Fit a logistic regression model for Alcohol Consumption as a predictor of Diabetes
+model_alcohol <- glm(Diabetes_binary ~ HvyAlcoholConsump, data = data, family = "binomial")
+
+# Summary of the model
+summary(model_alcohol)
+```
+
+Here the p-value for alcohol consumption is \<0.05 implying that the HvyAlcoholConsump variable is statistically significant. HvyAlcoholConsump1 has an estimate of -.999761 which results in a negative relationship between heavy alcohol consumption and having diabetes with a log odds of -.999 or odds ratio of .36796737. What this means is that the people who consume large amounts of alcohol have a 63% lower chance of having diabetes compared to those who do not consume large amounts. Even though this seems to be statistically significant due to the low p value, it does not mean that heavy alcohol use directly decreases chances of having diabetes. This unusual correlation can be explained by the data imbalance where a large number of the population are not heavy users. One way to deal with this imbalance in the data is to move to a random forest model that is much better at dealing with data imbalances.
+
+#### Smoker Status and Heavy Alcohol Consumption
+
+```{r}
+
+
+# Fit a multiple logistic regression model with Smoker and HvyAlcoholConsump
+model_both <- glm(Diabetes_binary ~ Smoker + HvyAlcoholConsump, data = data, family = "binomial")
+
+# Summary of the model
+summary(model_both)
+
+# Predict probabilities
+predicted_probs <- predict(model_both, type = "response")
+
+# Convert to 0/1 based on 0.5 threshold
+predicted_classes <- ifelse(predicted_probs > 0.5, 1, 0)
+
+# Confusion matrix
+conf_matrix <- table(Predicted = predicted_classes, Actual = data$Diabetes_binary)
+print(conf_matrix)
+
+# Accuracy
+accuracy <- mean(predicted_classes == data$Diabetes_binary)
+
+print(accuracy)
+```
+
+I ran a logistic model with both Smoker and HvyAlcoholConsump. Since it has 2 variables, each variable has different log odds values. To find the accuracy of this model, I predicted the probability based on the logistic model. Then based on the probability being greater than .5, I classify the values as 0 or 1. Then I run a confusion matrix where it looks at how many times the model predicted accurately. Finally, I look at the ratio of correct predictions to the number of total predictions to give me an accuracy score. This logistic model is accurate around 86.07% of the time.
+
+### Does diet affect chances of diabetes?
+
+```{r}
+# Fit a logistic regression model
+model_diet <- glm(Diabetes_binary ~ Fruits + Veggies, data = data, family = "binomial")
+
+# Look at the model summary
+summary(model_diet)
+
+# Predict probabilities
+predicted_probs_diet <- predict(model_diet, type = "response")
+
+# Classify as diabetic (1) if probability > 0.5
+predicted_classes_diet <- ifelse(predicted_probs > 0.5, 1, 0)
+
+# Confusion matrix
+conf_matrix <- table(Predicted = predicted_classes_diet, Actual = data$Diabetes_binary)
+print(conf_matrix)
+
+# Calculate accuracy
+accuracy_diet <- mean(predicted_classes == data$Diabetes_binary)
+
+accuracy_diet
+```
+
+Since the P values for both the fruits and veggies is less than 0.05, both variables are statistically significant. Both have negative log odds which imply that eating fruits or vegetables at least once a day is associated with decreased chances of having diabetes with veggies being slightly more impactfull. Interestingly enough, this model and the previous model both have the same accuracy score of 86.066% this can be explained by multiple reasons. First, the data is heavily imbalanced. since majority of the people do not have diabetes, a model guessing no diabetes most of the time results in a high accuracy. Another reason is that both models only have 2 variables. The limited number of variables results in two models that have same accuracy scores.
+
+### Does Mental health, Physical Health, education, and income affect chances of diabetes?
+
+```{r}
+model_sociohealth <- glm(
+  Diabetes_binary ~ MentHlth + PhysHlth + Education + Income + DiffWalk,
+  data = data,
+  family = "binomial"
+)
+
+# View model results
+summary(model_sociohealth)
+```
+
+This model is interesting due to the fact that some of the variables are not statistically significant. Education 2 - 4 and Income 3 - 5 have p values higher than 0.05 implying they are not statistically significant. What this implies is that middle income ranges and middle education ranges are not good predictors for if a person has diabetes or not. Larger number of bad mental health days result in a lower chance of diabetes. However, the log odds is extremely low to the point of neglecting the effect mental health has on Diabetes. Physical Health seem to be a decent indicator of diabetes as higher number of days with bad physical health increases the chance of having diabetes. The unexpected variable in this case is the DiffWalk1. Having difficulty walking up stairs has a log odds of .888 resulting in a odds ratio of 2.43. People who have difficulty walking up the stairs have a 2.43 times odds of having diabetes compared to people who do not have difficulty walking up the stairs. Since DiffWalk seems to be a great predictor for diabetes, we should look at how it acts alone in a model
+
+#### DiffWalk1 Model
+
+```{r}
+# Fit a logistic regression with only DiffWalk
+model_diffwalk_only <- glm(
+  Diabetes_binary ~ DiffWalk,
+  data = data,
+  family = "binomial"
+)
+
+# View the summary
+summary(model_diffwalk_only)
+```
+
+When running a model with just the DiffWalk variable, the odds increase with a log odds of 1.327 and a odds ratio of 3.771. This implies that people who have difficulty walking up stairs have a 3.771 times higher odds of having diabetes compared to a person who does not have difficulty walking up stairs. While DiffWalk might be a great predictor of diabetes, it is important to note that being an only variable has its cons with reduced accuracy.
+
+### Can we predict a model that can accurately predict diabetes?
+
+In this section, we will look at logistic regression, random forest, and KNN
+
+#### Logistic Regression
+
+```{r}
+
+model_full <- glm(Diabetes_binary ~ ., data = data, family = "binomial")
+summary(model_full)
+```
+
+From this logistic model, I will remove all the variables with high p values(\> 0.05). I plan to remove Fruits, Veggies, Education, and Income. Even though Age2 had a High p value, I believe it to be unnecessary to remove the entire variable due to that one large p value. I am further convinced to contain the age variable after looking at the large log odds provided by some of the age ranges.
+
+```{r}
+model_refined <- glm(Diabetes_binary ~ HighBP + HighChol + BMI + Smoker + Stroke + HeartDiseaseorAttack + PhysActivity + HvyAlcoholConsump + GenHlth + MentHlth + PhysHlth + DiffWalk + Sex + Age, data = data, family = "binomial")
+
+summary(model_refined)
+```
+
+Due to smoker and MentHlth having large p values, I plan on removing them from the regression
+
+```{r}
+
+set.seed(123)  # for reproducibility
+sample_index <- sample(seq_len(nrow(data)), size = 0.7 * nrow(data))  # 70% train
+
+train_data <- data[sample_index, ]
+test_data  <- data[-sample_index, ]
+model_refined_1 <- glm(Diabetes_binary ~ HighBP + HighChol + BMI + Stroke + HeartDiseaseorAttack + PhysActivity + HvyAlcoholConsump + GenHlth + PhysHlth + DiffWalk + Sex + Age, data = train_data, family = "binomial")
+
+summary(model_refined_1)
+```
+
+Since I believe Physical Activity and BMI are related, I plan on running an interaction model between those variables.
+
+```{r}
+model_refined_2 <- glm(Diabetes_binary ~ HighBP + HighChol + BMI*PhysActivity + Stroke + HeartDiseaseorAttack + HvyAlcoholConsump + GenHlth + PhysHlth + DiffWalk + Sex + Age, data = train_data, family = "binomial")
+
+summary(model_refined_2)
+```
+
+Now I plan on testing the accuracy of the original logistic model and interaction model.
+
+```{r}
+# Original
+# Step 1: Generate predicted probabilities
+predicted_probs_1 <- predict(model_refined_1, newdata = test_data, type = "response")
+
+# Step 2: Convert probabilities to binary predictions (threshold at 0.5)
+predicted_classes_1 <- ifelse(predicted_probs_1 >= 0.5, 1, 0)
+
+# Step 3: Compare predictions to actual values and calculate accuracy
+accuracy_1 <- mean(predicted_classes_1 == data$Diabetes_binary)
+accuracy_1
+
+
+
+
+# Interaction
+# Step 1: Generate predicted probabilities
+predicted_probs_2 <- predict(model_refined_2, newdata = test_data, type = "response")
+
+# Step 2: Convert probabilities to binary predictions (threshold at 0.5)
+predicted_classes_2 <- ifelse(predicted_probs_2 >= 0.5, 1, 0)
+
+# Step 3: Compare predictions to actual values and calculate accuracy
+accuracy_2 <- mean(predicted_classes_2 == data$Diabetes_binary)
+accuracy_2
+```
+
+The original model has an accuracy score of 0.8340705 and the interaction model has an accuracy score of 0.8343109. While both models have similar accuracy, the logistic model with an interaction is more accurate. One thing to note here is that logistic is not a good model to use for this type of data. Due to the large number of variables, there is the possibility of multicollinearity which can increase the p values for some variables and result in excluding those variables from the final model.
+
+#### Random Forest
+
+```{r}
+library(randomForest)
+
+
+set.seed(123)  # for reproducibility
+k <- 5
+folds <- createFolds(data$Diabetes_binary, k = k)
+
+accuracies <- c()
+
+for(i in 1:k) {
+  # Split data into training and testing
+  test_indices <- folds[[i]]
+  test_data <- data[test_indices, ]
+  train_data <- data[-test_indices, ]
+  
+  # Train the model
+  rf_model <- randomForest(Diabetes_binary ~ HighBP + HighChol + BMI + Stroke + 
+                           HeartDiseaseorAttack + PhysActivity + HvyAlcoholConsump + GenHlth +  PhysHlth + DiffWalk + Sex + Age, 
+                           data = train_data, ntree = 500)
+  
+  # Predict on the test set
+  pred_rf <- predict(rf_model, newdata = test_data)
+  
+  # Calculate accuracy
+  fold_accuracy <- mean(pred_rf == test_data$Diabetes_binary)
+  accuracies <- c(accuracies, fold_accuracy)
+}
+
+# Average cross-validated accuracy
+cv_accuracy <- mean(accuracies)
+cv_accuracy
+```
+
+A Random Forest is a model in which multiple decision trees are trained on subsets of the data. The decision trees grow based on MSE until it reaches 500. Then, the forest votes from all the created trees to create the random forest. So far, this model has given us the highest accuracy with 86.59% accuracy in predicting if a person is diabetic or not. However, there are downsides to such models. Creating a random forest is highly computational and can take a lot of time to create. This current model took around 12 minutes to render out to get an accuracy score.
+
+#### KNN
+
+```{r}
+# Load libraries
+library(class)
+library(caret)
+
+# Split the data into training and test sets
+set.seed(42)
+trainIndex <- createDataPartition(data$Diabetes_binary, p = 0.75, list = FALSE)
+train_data <- data[trainIndex, ]
+test_data <- data[-trainIndex, ]
+
+# Scale the features (except the target variable)
+pre_process <- preProcess(train_data[, -1], method = "scale")
+train_scaled <- predict(pre_process, train_data[, -1])
+test_scaled <- predict(pre_process, test_data[, -1])
+
+# Add back the target variable (Diabetes_binary)
+train_scaled$Diabetes_binary <- train_data$Diabetes_binary
+test_scaled$Diabetes_binary <- test_data$Diabetes_binary
+
+# Train the KNN model with k = 5 (you can try different values of k)
+k_value <- 15
+knn_model <- knn(train = train_scaled[, -ncol(train_scaled)], 
+                 test = test_scaled[, -ncol(test_scaled)], 
+                 cl = train_scaled$Diabetes_binary, 
+                 k = k_value)
+# Compare predictions to actual values and calculate accuracy
+accuracy_knn <- mean(knn_model == test_scaled$Diabetes_binary)
+accuracy_knn
+
+```
+
+To run a KNN model, I first partitioned the data into two sets. A training set and testing set. The KNN model would be trained on the train_data set and then later tested on the test_data set. Then, I scaled the data to make sure that each variable's distance was accounted for equally. Finally , I ran the KNN model with k = 15. The KNN model is 86.28% accurate at classifying a person as diabetic or not diabetic. However, I would not recommend this model as it takes a long time to render and is difficult to do with large sets of data.\
+
+## Conclusion
+
+In conclusion, there are many variables that can affect whether a person has diabetes or not. While there were some variables that were highly associated with diabetes, it does not necessarily imply that those variables are the sole predictors of diabetes. The models we ran gave similar results in accuracy with all of them having accuracy scores around 83% - 87%. There are factors that a person should consider when choosing a model such as complexity, interpretability, and efficiency. The random forest had the highest accuracy score but it was highly complex and difficult to explain how the model works to others. However, the logistic model is a bad model to start with. The logistic model had too many variables which definitely cause multicollinearity. However, it is difficult to check for multicollinearity in this data set since most of the variables are categorical. Therefore, I would go with a random forest model despite its long run time. From the graphs it is possible for us to see that some variables are highly correlated with diabetes. This includes High cholesterol, high blood pressure, as well as bad physical health. Those who claimed to have 30 days of bad physical health out of the past 30 days had a larger proportion of people who had diabetes. While these variables might not be the direst cause of diabetes, they are valid variables that can indicate whether or not a person has diabetes.
